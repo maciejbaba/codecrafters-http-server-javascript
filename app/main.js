@@ -44,6 +44,7 @@ const server = net.createServer((socket) => {
       socket.write(`HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}\r\n`)
     } else if (path.startsWith("/files")) {
       const fileName = path.split("/")[2]
+      console.log(fileName)
       const filePath = `${fileDir}/${fileName}`
 
       if (!fs.existsSync(filePath)) {
