@@ -3,7 +3,7 @@ const fs = require("fs")
 
 const PORT = 4221
 const fileDir = process.argv[3]
-console.log(fileDir)
+console.log("fileDir: ", fileDir)
 // You can use print statements as follows for debugging, they'll be visible when running tests.
 console.log("Logs from your program will appear here!");
 
@@ -55,7 +55,6 @@ const server = net.createServer((socket) => {
 
       const fileContent = fs.readFileSync(fileName)
       socket.write(`HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${fileContent.length}\r\n\r\n${fileContent}\r\n`)
-      socket.end()
       }
     }
     else {
