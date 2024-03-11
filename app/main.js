@@ -20,6 +20,7 @@ const server = net.createServer((socket) => {
     const [METHOD_INDEX, PATH_INDEX, VERSION_INDEX] = [0, 1, 2];
     const firstRequestPartArray = firstRequestPart.split(" ")
     const path = firstRequestPartArray[PATH_INDEX]
+    console.log(path)
 
     let userAgent = ""
     arrayData.map(data => {
