@@ -11,16 +11,23 @@ const server = net.createServer((socket) => {
   });
   socket.on("data", data => {
     // raw buffer
-    console.log(data)
+    // console.log("data", data)
 
     // string
     const stringData = data.toString()
-    console.log(stringData)
+    console.log("stringData",stringData)
 
     const [method, path, version] = stringData.split(" ")
-    console.log(stringData.split(" "))
-    if (path === "/") {
-      socket.write("HTTP/1.1 200 OK\r\n\r\n")
+    console.log("stringData.split()", stringData.split(" "))
+
+    const echoPart = path.slice(0,5)
+    console.log("echoPart", echoPart)
+
+    const restPart = path.slice(6)
+    console.log("restPart", restPart)
+    if (echoPart === "/echo") {
+      socket.write(`HTTP/1.1 200 OK\r\n
+      ${restPart}\r\n\r\n`)
     } else {
       socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n")
     }
