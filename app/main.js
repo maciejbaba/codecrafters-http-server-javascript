@@ -25,10 +25,14 @@ const server = net.createServer((socket) => {
 
     const restPart = path.slice(6)
     console.log("restPart", restPart)
-    if (echoPart === "/echo") {
+    if (path === "/") {
+      socket.write("HTTP/1.1 200 OK\r\n\r\n")
+    } 
+    else if (echoPart === "/echo") {
       socket.write(`HTTP/1.1 200 OK\r\n
-      ${restPart}\r\n\r\n`)
-    } else {
+${restPart}\r\n\r\n`)
+    }
+    else {
       socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n")
     }
     socket.end()
