@@ -10,16 +10,21 @@ const server = net.createServer((socket) => {
     server.close();
   });
   socket.on("data", (data) => {
-    // raw buffer
-    // console.log("data", data)
-
-    // string
     const stringData = data.toString();
-    console.log("stringData", stringData);
+    const arrayData = stringData.split("\r\n")
+    const firstRequestPart = arrayData[0]
 
-    const [method, path, version] = stringData.split(" ");
-    console.log("stringData.split()", stringData.split(" "));
+    const [METHOD_INDEX, PATH_INDEX, VERSION_INDEX] = [0, 1, 2];
+    const firstRequestPartArray = firstRequestPart.split(" ")
+    const path = firstRequestPartArray[PATH_INDEX]
 
+    let userAgent = ""
+    arrayData.map(data => {
+      if (data.includes("User-Agent:")) {
+        let splited = data.split(": ")
+        userAgent = splited[1]
+      }
+    })
     const echoPart = path.slice(0, 6);
     console.log("echoPart", echoPart);
 
@@ -31,7 +36,10 @@ const server = net.createServer((socket) => {
       socket.write(
         `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${restPart.length}\r\n\r\n${restPart}\r\n`,
       );
-    } else {
+    } else if (path === "/user-agent") {
+      socket.write(`HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}\r\n`)
+    }
+    else {
       socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n");
     }
     socket.end();
