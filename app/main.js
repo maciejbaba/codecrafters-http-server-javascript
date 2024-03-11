@@ -1,5 +1,6 @@
 const net = require("net");
 
+const PORT = 4221
 // You can use print statements as follows for debugging, they'll be visible when running tests.
 console.log("Logs from your program will appear here!");
 
@@ -45,4 +46,4 @@ const server = net.createServer((socket) => {
     socket.end();
   });
 });
-server.listen(4221, "localhost");
+server.listen(PORT, "localhost");
