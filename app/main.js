@@ -20,19 +20,16 @@ const server = net.createServer((socket) => {
     const [method, path, version] = stringData.split(" ");
     console.log("stringData.split()", stringData.split(" "));
 
-    const echoPart = path.slice(0, 5);
+    const echoPart = path.slice(0, 6);
     console.log("echoPart", echoPart);
 
     const restPart = path.slice(6);
     console.log("restPart", restPart);
     if (path === "/") {
       socket.write("HTTP/1.1 200 OK\r\n\r\n");
-    } else if (echoPart === "/echo") {
+    } else if (echoPart === "/echo/") {
       socket.write(
-        `HTTP/1.1 200 OK\r\n
-        Content-Type: text/plain
-        \r\n\r\n
-        ${restPart}\r\n`,
+        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n${restPart}\r\n`,
       );
     } else {
       socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n");
