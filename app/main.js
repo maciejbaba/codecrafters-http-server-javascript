@@ -30,8 +30,9 @@ const server = net.createServer((socket) => {
     } else if (echoPart === "/echo") {
       socket.write(
         `HTTP/1.1 200 OK\r\n
-        Content-Type: text/plain\r\n
-        ${restPart}\r\n\r\n`,
+        Content-Type: text/plain
+        \r\n\r\n
+        ${restPart}\r\n`,
       );
     } else {
       socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n");
