@@ -3,6 +3,7 @@ const fs = require("fs")
 
 const PORT = 4221
 const fileDir = process.argv[3]
+console.log(fileDir)
 // You can use print statements as follows for debugging, they'll be visible when running tests.
 console.log("Logs from your program will appear here!");
 
@@ -44,7 +45,7 @@ const server = net.createServer((socket) => {
       socket.write(`HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}\r\n`)
     } else if (path.startsWith("/files")) {
       const fileName = path.split("/")[2]
-      console.log(fileName)
+      console.log("fileName: ", fileName)
       const filePath = `${fileDir}/${fileName}`
 
       if (!fs.existsSync(filePath)) {
