@@ -67,7 +67,7 @@ const server = net.createServer((socket) => {
       const fileName = path.split("/")[2];
       console.log("fileName: ", fileName);
       const filePath = `${fileDir}/${fileName}`;
-      fs.writeFileSync(filePath, stringData);
+      fs.writeFileSync(filePath, body);
       socket.write(`HTTP/1.1 201 Created\r\n\r\n`);
     } else {
       socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n");
