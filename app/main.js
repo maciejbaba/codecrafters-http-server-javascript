@@ -17,6 +17,8 @@ const server = net.createServer((socket) => {
     const stringData = data.toString();
     const arrayData = stringData.split("\r\n");
     const firstRequestPart = arrayData[0];
+    const body = arrayData[arrayData.length - 1]
+    console.log("body", body)
 
     const [METHOD_INDEX, PATH_INDEX, VERSION_INDEX] = [0, 1, 2];
     const firstRequestPartArray = firstRequestPart.split(" ");
@@ -65,8 +67,6 @@ const server = net.createServer((socket) => {
       const fileName = path.split("/")[2];
       console.log("fileName: ", fileName);
       const filePath = `${fileDir}/${fileName}`;
-      const body = arrayData[1]
-      console.log("body", body)
       fs.writeFileSync(filePath, stringData);
       socket.write(`HTTP/1.1 201 Created\r\n\r\n`);
     } else {
