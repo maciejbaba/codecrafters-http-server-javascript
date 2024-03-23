@@ -66,7 +66,7 @@ const server = net.createServer((socket) => {
       console.log("fileName: ", fileName);
       const filePath = `${fileDir}/${fileName}`;
       const body = arrayData[1]
-      console.log(body)
+      console.log("body", body)
       fs.writeFileSync(filePath, stringData);
       socket.write(`HTTP/1.1 201 Created\r\n\r\n`);
     } else {
