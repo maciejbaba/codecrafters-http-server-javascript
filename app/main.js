@@ -32,6 +32,11 @@ const createHttpResponse = ({
     response_headers.contentEncoding = "Content-Encoding: " + "gzip" + NEW_LINE;
   }
 
+  if (acceptEncoding && acceptEncoding.includes("gzip")) {
+    response_headers.acceptEncoding = "Accept-Encoding: " + "gzip" + NEW_LINE;
+    response_headers.contentEncoding = "Content-Encoding: " + "gzip" + NEW_LINE;
+  }
+
   if (contentType !== "text/plain") {
     response_headers.contentType = "Content-Type: " + contentType + NEW_LINE;
   }
@@ -86,13 +91,13 @@ const server = net.createServer((socket) => {
       socket.write(response);
     }
 
-    arrayData.map((data) => {
-      if (data.includes("User-Agent:")) {
-        let splited = data.split(": ");
+    arrayData.map((header) => {
+      if (header.includes("User-Agent:")) {
+        let splited = header.split(": ");
         request.userAgent = splited[1];
       }
-      if (data.includes("Accept-Encoding:")) {
-        let splited = data.split(": ");
+      if (header.includes("Accept-Encoding:")) {
+        let splited = header.split(": ");
         request.acceptEncoding = splited[1];
       }
     });
@@ -112,11 +117,11 @@ const server = net.createServer((socket) => {
         return;
       }
 
-      if (acceptEncoding === ACCEPTED_ENCODING) {
+      if (acceptEncoding?.includes(ACCEPTED_ENCODING)) {
         const response = createHttpResponse({
           message: "OK",
           statusCode: 200,
-          acceptEncoding: acceptEncoding,
+          acceptEncoding: "gzip",
           body: userAgent,
         });
         socket.write(response);
