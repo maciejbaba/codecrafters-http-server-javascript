@@ -17,7 +17,6 @@ const createHttpResponse = ({message = "OK", contentLength = 0, statusCode = 200
 const server = net.createServer((socket) => {
   socket.on("close", () => {
     socket.end();
-    server.close();
   });
 
   socket.on("data", (data) => {
@@ -39,7 +38,7 @@ const server = net.createServer((socket) => {
       version: version
     }
 
-    if (request.path === "/") {
+    if (path === "/") {
       const response = createHttpResponse({});
       socket.write(response);
     }
