@@ -43,10 +43,14 @@ const createHttpResponse = ({
   }
 
   if (body !== "") {
-    if (response_headers.contentEncoding === "gzip" && (compressBody === true)) {
+    if (
+      response_headers.contentEncoding?.includes("gzip") &&
+      compressBody === true
+    ) {
       const compressed = zlib.gzipSync(body);
 
-      response_headers.contentLength = compressed.length; // overwrite content length
+      response_headers.contentLength =
+        "Content-Length: " + compressed.length + NEW_LINE; // overwrite content length
 
       let response = "";
 
@@ -61,7 +65,6 @@ const createHttpResponse = ({
   }
 
   let response = "";
-
   Object.values(response_headers).forEach((value) => {
     response += value;
   });
@@ -173,7 +176,6 @@ const server = net.createServer((socket) => {
           acceptEncoding: request.acceptEncoding,
         });
       }
-      console.log(response);
       socket.write(response);
       if (compressedBody) {
         socket.write(compressedBody);
