@@ -13,6 +13,7 @@ const createHttpResponse = ({
   acceptEncoding = "",
   contentType = "text/plain",
   userAgent = "",
+  compressBody = false,
 }) => {
   const HTTP_VERSION = "HTTP/1.1";
   const NEW_LINE = "\r\n";
@@ -28,11 +29,6 @@ const createHttpResponse = ({
     response_headers.headLine = `${HTTP_VERSION} ${statusCode} ${message}${NEW_LINE}`;
   }
 
-  if (acceptEncoding === "gzip") {
-    response_headers.acceptEncoding = "Accept-Encoding: " + "gzip" + NEW_LINE;
-    response_headers.contentEncoding = "Content-Encoding: " + "gzip" + NEW_LINE;
-  }
-
   if (acceptEncoding && acceptEncoding.includes("gzip")) {
     response_headers.acceptEncoding = "Accept-Encoding: " + "gzip" + NEW_LINE;
     response_headers.contentEncoding = "Content-Encoding: " + "gzip" + NEW_LINE;
@@ -46,6 +42,24 @@ const createHttpResponse = ({
     response_headers.userAgent = "User-Agent: " + userAgent + NEW_LINE;
   }
 
+  if (body !== "") {
+    if (response_headers.contentEncoding === "gzip" && (compressBody === true)) {
+      const compressed = zlib.gzipSync(body);
+
+      response_headers.contentLength = compressed.length; // overwrite content length
+
+      let response = "";
+
+      Object.values(response_headers).forEach((value) => {
+        response += value;
+      });
+
+      response += NEW_LINE; // every header adds a new line so after all headers add a new line so it becomes two new lines meaning end of headers
+
+      return [response, compressed];
+    }
+  }
+
   let response = "";
 
   Object.values(response_headers).forEach((value) => {
@@ -54,13 +68,7 @@ const createHttpResponse = ({
 
   response += NEW_LINE; // every header adds a new line so after all headers add a new line so it becomes two new lines meaning end of headers
 
-  if (body !== "") {
-    if (response_headers.contentEncoding === "gzip") {
-      response += zlib.gzipSync(body);
-    } else {
-      response += body;
-    }
-  }
+  response += body;
 
   return response;
 };
@@ -147,14 +155,30 @@ const server = net.createServer((socket) => {
     request.restPart = request.path.slice(ECHO_PART_LENGTH);
 
     if (request.echoPart === "/echo/") {
-      const response = createHttpResponse({
-        message: "OK",
-        statusCode: 200,
-        body: request.restPart,
-        acceptEncoding: request.acceptEncoding,
-      });
-
+      let response;
+      let compressedBody;
+      if (request.acceptEncoding?.includes("gzip")) {
+        [response, compressedBody] = createHttpResponse({
+          message: "OK",
+          statusCode: 200,
+          body: request.restPart,
+          acceptEncoding: request.acceptEncoding,
+          compressBody: true,
+        });
+      } else {
+        response = createHttpResponse({
+          message: "OK",
+          statusCode: 200,
+          body: request.restPart,
+          acceptEncoding: request.acceptEncoding,
+        });
+      }
+      console.log(response);
       socket.write(response);
+      if (compressedBody) {
+        socket.write(compressedBody);
+        socket.end();
+      }
     } else if (request.method === "GET" && request.path.startsWith("/files")) {
       const fileName = request.path.split("/")[2];
       const filePath = `${fileDir}/${fileName}`;
