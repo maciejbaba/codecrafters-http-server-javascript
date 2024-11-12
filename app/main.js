@@ -1,5 +1,6 @@
 const net = require("net");
 const fs = require("fs");
+const zlib = require("zlib");
 
 const PORT = 4221;
 const fileDir = process.argv[3];
@@ -54,7 +55,11 @@ const createHttpResponse = ({
   response += NEW_LINE; // every header adds a new line so after all headers add a new line so it becomes two new lines meaning end of headers
 
   if (body !== "") {
-    response += body;
+    if (response_headers.contentEncoding === "gzip") {
+      response += zlib.gzipSync(body);
+    } else {
+      response += body;
+    }
   }
 
   return response;
