@@ -3,9 +3,15 @@ const fs = require("fs");
 
 const PORT = 4221;
 const fileDir = process.argv[3];
-console.log("fileDir: ", fileDir);
 // You can use print statements as follows for debugging, they'll be visible when running tests.
-console.log("Logs from your program will appear here!");
+
+const createHttpResponse = ({message = "OK", contentLength = 0, statusCode = 200}) => {
+  if (contentLength === 0) {
+    return `HTTP/1.1 ${statusCode} ${message}\r\n\r\n`;
+  }
+  
+  return `HTTP/1.1 ${statusCode} ${message}\r\nContent-Length: ${contentLength}\r\n\r\n`;
+};
 
 // Uncomment this to pass the first stage
 const server = net.createServer((socket) => {
@@ -13,44 +19,59 @@ const server = net.createServer((socket) => {
     socket.end();
     server.close();
   });
+
   socket.on("data", (data) => {
     const stringData = data.toString();
-    const arrayData = stringData.split("\r\n");
-    const firstRequestPart = arrayData[0];
-    const body = arrayData[arrayData.length - 1]
-    console.log("body", body)
+    console.log(stringData);
 
-    const [METHOD_INDEX, PATH_INDEX, VERSION_INDEX] = [0, 1, 2];
-    const firstRequestPartArray = firstRequestPart.split(" ");
-    const path = firstRequestPartArray[PATH_INDEX];
-    const method = firstRequestPartArray[METHOD_INDEX];
-    console.log(path);
+    const arrayData = stringData.split("\r\n");
+
+    const body = arrayData[arrayData.length - 1]
+
+    const methodPathVersion = arrayData[0].split(" ");
+    const method = methodPathVersion[0];
+    const path = methodPathVersion[1];
+    const version = methodPathVersion[2];
+
+    let request = {
+      method: method,
+      path: path,
+      version: version
+    }
+
+    if (request.path === "/") {
+      const response = createHttpResponse({});
+      socket.write(response);
+    }
 
     let userAgent = "";
+    let acceptEncoding = "";
     arrayData.map((data) => {
       if (data.includes("User-Agent:")) {
         let splited = data.split(": ");
         userAgent = splited[1];
       }
+      if (data.includes("Accept-Encoding:")) {
+        let splited = data.split(": ");
+        acceptEncoding = splited[1];
+      }
     });
+
+    if (path === "/user-agent") {
+      socket.write(
+        `HTTP/1.1 200 OK\r\nContent-Encoding: ${acceptEncoding}\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}\r\n`,
+      );
+    }
+
     const echoPart = path.slice(0, 6);
-    console.log("echoPart", echoPart);
 
     const restPart = path.slice(6);
-    console.log("restPart", restPart);
-    if (path === "/") {
-      socket.write("HTTP/1.1 200 OK\r\n\r\n");
-    } else if (echoPart === "/echo/") {
+    if (echoPart === "/echo/") {
       socket.write(
-        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${restPart.length}\r\n\r\n${restPart}\r\n`,
-      );
-    } else if (path === "/user-agent") {
-      socket.write(
-        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}\r\n`,
+        `HTTP/1.1 200 OK\r\nContent-Encoding: ${acceptEncoding}\r\nContent-Type: text/plain\r\nContent-Length: ${restPart.length}\r\n\r\n${restPart}\r\n`,
       );
     } else if (method === "GET" && path.startsWith("/files")) {
       const fileName = path.split("/")[2];
-      console.log("fileName: ", fileName);
       const filePath = `${fileDir}/${fileName}`;
 
       if (!fs.existsSync(filePath)) {
@@ -59,18 +80,25 @@ const server = net.createServer((socket) => {
       } else {
         const fileContent = fs.readFileSync(filePath);
         socket.write(
-          `HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${fileContent.length}\r\n\r\n${fileContent}\r\n`,
+          `HTTP/1.1 200 OK\r\nContent-Encoding: ${acceptEncoding}\r\nContent-Type: application/octet-stream\r\nContent-Length: ${fileContent.length}\r\n\r\n${fileContent}\r\n`,
         );
         socket.end();
       }
     } else if (method === "POST" && path.startsWith("/files")) {
       const fileName = path.split("/")[2];
-      console.log("fileName: ", fileName);
       const filePath = `${fileDir}/${fileName}`;
       fs.writeFileSync(filePath, body);
-      socket.write(`HTTP/1.1 201 Created\r\n\r\n`);
+      const response = createHttpResponse({
+        message: "Created",
+        statusCode: 201
+      })
+      socket.write(response);
     } else {
-      socket.write("HTTP/1.1 404 NOT FOUND\r\n\r\n");
+      const response = createHttpResponse({
+        message: "Not Found",
+        statusCode: 404
+      })
+      socket.write(response);
     }
     socket.end();
   });
