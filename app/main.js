@@ -5,12 +5,54 @@ const PORT = 4221;
 const fileDir = process.argv[3];
 // You can use print statements as follows for debugging, they'll be visible when running tests.
 
-const createHttpResponse = ({message = "OK", contentLength = 0, statusCode = 200}) => {
-  if (contentLength === 0) {
-    return `HTTP/1.1 ${statusCode} ${message}\r\n\r\n`;
+const createHttpResponse = ({
+  message = "OK",
+  statusCode = 200,
+  body = "",
+  acceptEncoding = "",
+  contentType = "text/plain",
+  userAgent = "",
+}) => {
+  const HTTP_VERSION = "HTTP/1.1";
+  const NEW_LINE = "\r\n";
+
+  let response_headers = {
+    headLine: `${HTTP_VERSION} ${statusCode} ${message}${NEW_LINE}`,
+    acceptEncoding: "Accept-Encoding: " + acceptEncoding + NEW_LINE,
+    contentType: "Content-Type: " + contentType + NEW_LINE,
+    contentLength: "Content-Length: " + body.length + NEW_LINE,
+  };
+
+  if (message !== "OK" && statusCode !== 200) {
+    response_headers.headLine = `${HTTP_VERSION} ${statusCode} ${message}${NEW_LINE}`;
   }
-  
-  return `HTTP/1.1 ${statusCode} ${message}\r\nContent-Length: ${contentLength}\r\n\r\n`;
+
+  if (acceptEncoding === "gzip") {
+    response_headers.acceptEncoding = "Accept-Encoding: " + "gzip" + NEW_LINE;
+    response_headers.contentEncoding = "Content-Encoding: " + "gzip" + NEW_LINE;
+  }
+
+  if (contentType !== "text/plain") {
+    response_headers.contentType = "Content-Type: " + contentType + NEW_LINE;
+  }
+
+  if (userAgent !== "") {
+    response_headers.userAgent = "User-Agent: " + userAgent + NEW_LINE;
+  }
+
+  let response = "";
+
+  Object.values(response_headers).forEach((value) => {
+    response += value;
+  });
+
+  response += NEW_LINE; // every header adds a new line so after all headers add a new line so it becomes two new lines meaning end of headers
+
+  if (body !== "") {
+    response += body;
+  }
+
+  return response;
 };
 
 // Uncomment this to pass the first stage
@@ -25,78 +67,116 @@ const server = net.createServer((socket) => {
 
     const arrayData = stringData.split("\r\n");
 
-    const body = arrayData[arrayData.length - 1]
+    const body = arrayData[arrayData.length - 1];
 
     const methodPathVersion = arrayData[0].split(" ");
     const method = methodPathVersion[0];
     const path = methodPathVersion[1];
     const version = methodPathVersion[2];
 
-    let request = {
+    const request = {
       method: method,
       path: path,
-      version: version
-    }
+      version: version,
+    };
 
-    if (path === "/") {
+    // if path is "/" return "HTTP/1.1 200 OK\r\n\r\n"
+    if (request.path === "/") {
       const response = createHttpResponse({});
       socket.write(response);
     }
 
-    let userAgent = "";
-    let acceptEncoding = "";
     arrayData.map((data) => {
       if (data.includes("User-Agent:")) {
         let splited = data.split(": ");
-        userAgent = splited[1];
+        request.userAgent = splited[1];
       }
       if (data.includes("Accept-Encoding:")) {
         let splited = data.split(": ");
-        acceptEncoding = splited[1];
+        request.acceptEncoding = splited[1];
       }
     });
 
-    if (path === "/user-agent") {
-      socket.write(
-        `HTTP/1.1 200 OK\r\nContent-Encoding: ${acceptEncoding}\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}\r\n`,
-      );
+    if (request.path === "/user-agent") {
+      const ACCEPTED_ENCODING = "gzip";
+      const userAgent = request.userAgent;
+      const acceptEncoding = request.acceptEncoding;
+
+      if (!userAgent) {
+        const response = createHttpResponse({
+          message: "Bad Request",
+          statusCode: 400,
+        });
+        socket.write(response);
+        socket.end();
+        return;
+      }
+
+      if (acceptEncoding === ACCEPTED_ENCODING) {
+        const response = createHttpResponse({
+          message: "OK",
+          statusCode: 200,
+          acceptEncoding: acceptEncoding,
+          body: userAgent,
+        });
+        socket.write(response);
+      } else {
+        const response = createHttpResponse({
+          message: "OK",
+          statusCode: 200,
+          acceptEncoding: "gzip",
+          body: userAgent,
+        });
+        socket.write(response);
+        socket.end();
+      }
     }
 
-    const echoPart = path.slice(0, 6);
+    const ECHO_PART_LENGTH = 6; // "/echo/"
+    request.echoPart = request.path.slice(0, ECHO_PART_LENGTH);
+    request.restPart = request.path.slice(ECHO_PART_LENGTH);
 
-    const restPart = path.slice(6);
-    if (echoPart === "/echo/") {
-      socket.write(
-        `HTTP/1.1 200 OK\r\nContent-Encoding: ${acceptEncoding}\r\nContent-Type: text/plain\r\nContent-Length: ${restPart.length}\r\n\r\n${restPart}\r\n`,
-      );
-    } else if (method === "GET" && path.startsWith("/files")) {
-      const fileName = path.split("/")[2];
+    if (request.echoPart === "/echo/") {
+      const response = createHttpResponse({
+        message: "OK",
+        statusCode: 200,
+        body: request.restPart,
+        acceptEncoding: request.acceptEncoding,
+      });
+
+      socket.write(response);
+    } else if (request.method === "GET" && request.path.startsWith("/files")) {
+      const fileName = request.path.split("/")[2];
       const filePath = `${fileDir}/${fileName}`;
 
       if (!fs.existsSync(filePath)) {
-        socket.write("HTTP/1.1 404\r\n\r\n");
+        const response = createHttpResponse({
+          message: "Not Found",
+          statusCode: 404,
+        });
+        socket.write(response);
         socket.end();
       } else {
         const fileContent = fs.readFileSync(filePath);
         socket.write(
-          `HTTP/1.1 200 OK\r\nContent-Encoding: ${acceptEncoding}\r\nContent-Type: application/octet-stream\r\nContent-Length: ${fileContent.length}\r\n\r\n${fileContent}\r\n`,
+          `HTTP/1.1 200 OK\r\nContent-Encoding: ${request.acceptEncoding}\r\nContent-Type: application/octet-stream\r\nContent-Length: ${fileContent.length}\r\n\r\n${fileContent}\r\n`
         );
         socket.end();
       }
-    } else if (method === "POST" && path.startsWith("/files")) {
-      const fileName = path.split("/")[2];
+    } else if (request.method === "POST" && request.path.startsWith("/files")) {
+      const fileName = request.path.split("/")[2];
       const filePath = `${fileDir}/${fileName}`;
       fs.writeFileSync(filePath, body);
       const response = createHttpResponse({
         message: "Created",
-        statusCode: 201
-      })
+        statusCode: 201,
+      });
       socket.write(response);
     } else {
       const response = createHttpResponse({
         message: "Not Found",
-        statusCode: 404
-      })
+        statusCode: 404,
+      });
       socket.write(response);
     }
     socket.end();
